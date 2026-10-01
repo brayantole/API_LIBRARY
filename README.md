@@ -43,4 +43,19 @@ Base URL: `http://localhost:3000/api/v1/books`
 
 Para crear un libro, envía `title`, `isbn`, `publicationYear`, `genre` y `authorId` (el ObjectId de un autor existente). `active` es opcional y por defecto es `true`.
 
+## Endpoints del módulo loans
+
+Base URL: `http://localhost:3000/api/v1/loans`
+
+| Método | Ruta          | Descripción                        |
+| ------ | ------------- | ---------------------------------- |
+| POST   | /             | Crea un préstamo                   |
+| GET    | /             | Lista todos los préstamos          |
+| GET    | /:id          | Obtiene un préstamo por id         |
+| PUT    | /:id          | Actualiza un préstamo activo       |
+| POST   | /:id/return   | Registra la devolución del libro   |
+| DELETE | /:id          | Elimina un préstamo                |
+
+Para crear un préstamo, envía `bookId` (el ObjectId de un libro existente), `borrowerName` y `dueDate` en formato de fecha válido. La fecha del préstamo se asigna automáticamente.
+
 Health check: `GET /health`
