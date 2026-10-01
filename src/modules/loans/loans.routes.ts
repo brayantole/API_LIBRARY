@@ -9,7 +9,6 @@ router.post("/", asyncHandler(loansController.create));
 router.get("/", asyncHandler(loansController.findAll));
 router.get("/:id", asyncHandler(loansController.findById));
 router.put("/:id", asyncHandler(loansController.update));
-router.post("/:id/return", asyncHandler(loansController.returnLoan));
 router.delete("/:id", asyncHandler(loansController.delete));
 
 export default router;

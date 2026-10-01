@@ -24,11 +24,6 @@ export class LoansController {
         res.status(200).json(loan);
     };
 
-    returnLoan = async (req: Request<{ id: string }>, res: Response): Promise<void> => {
-        const loan = await this.loansService.returnLoan(req.params.id);
-        res.status(200).json(loan);
-    };
-
     delete = async (req: Request<{ id: string }>, res: Response): Promise<void> => {
         await this.loansService.delete(req.params.id);
         res.status(204).send();

@@ -8,6 +8,7 @@ export const connectDB = async (): Promise<void> => {
     client = new MongoClient(env.mongoUri);
     await client.connect();
     db = client.db(env.mongoDBName);
+    await db.collection("books").createIndex({ isbn: 1 }, { unique: true });
     console.log(`Conectado a MongoDB (db: ${env.mongoDBName})`);
 };
 

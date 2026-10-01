@@ -11,21 +11,25 @@ export class BooksService {
     async create(data: BookDTO): Promise<Book> {
         const title = this.requireString(data?.title, "title");
         const isbn = this.requireString(data?.isbn, "isbn");
-        const genre = this.requireString(data?.genre, "genre");
-        const publicationYear = this.requireYear(data?.publicationYear);
         const authorId = await this.requireAuthor(data?.authorId);
+        const year = data?.year === undefined ? undefined : this.requireYear(data.year);
+        await this.ensureUniqueIsbn(isbn);
         const now = new Date();
 
-        return this.booksRepository.create({
-            title,
-            isbn,
-            publicationYear,
-            genre,
-            authorId,
-            active: typeof data.active === "boolean" ? data.active : true,
-            createdAt: now,
-            updatedAt: now,
-        });
+        try {
+            return await this.booksRepository.create({
+                title,
+                isbn,
+                authorId,
+                year,
+                available: true,
+                createdAt: now,
+                updatedAt: now,
+            });
+        } catch (error) {
+            this.rethrowDuplicateIsbn(error);
+            throw error;
+        }
     }
 
     async findAll(): Promise<Book[]> {
@@ -45,19 +49,15 @@ export class BooksService {
         const changes: Partial<Book> = {};
 
         if (data.title !== undefined) changes.title = this.requireString(data.title, "title");
-        if (data.isbn !== undefined) changes.isbn = this.requireString(data.isbn, "isbn");
-        if (data.genre !== undefined) changes.genre = this.requireString(data.genre, "genre");
-        if (data.publicationYear !== undefined) {
-            changes.publicationYear = this.requireYear(data.publicationYear);
+        if (data.isbn !== undefined) {
+            changes.isbn = this.requireString(data.isbn, "isbn");
+            await this.ensureUniqueIsbn(changes.isbn, objectId);
         }
         if (data.authorId !== undefined) {
             changes.authorId = await this.requireAuthor(data.authorId);
         }
-        if (data.active !== undefined) {
-            if (typeof data.active !== "boolean") {
-                throw new BadRequestError("El campo 'active' debe ser booleano");
-            }
-            changes.active = data.active;
+        if (data.year !== undefined) {
+            changes.year = this.requireYear(data.year);
         }
 
         if (Object.keys(changes).length === 0) {
@@ -65,7 +65,13 @@ export class BooksService {
         }
 
         changes.updatedAt = new Date();
-        const updated = await this.booksRepository.update(objectId, changes);
+        let updated: Book | null;
+        try {
+            updated = await this.booksRepository.update(objectId, changes);
+        } catch (error) {
+            this.rethrowDuplicateIsbn(error);
+            throw error;
+        }
         if (!updated) {
             throw new NotFoundError("Libro no encontrado");
         }
@@ -73,7 +79,15 @@ export class BooksService {
     }
 
     async delete(id: string): Promise<void> {
-        const deleted = await this.booksRepository.delete(this.toObjectId(id));
+        const objectId = this.toObjectId(id);
+        const book = await this.booksRepository.findById(objectId);
+        if (!book) {
+            throw new NotFoundError("Libro no encontrado");
+        }
+        if (!book.available) {
+            throw new BadRequestError("No se puede eliminar un libro que está prestado");
+        }
+        const deleted = await this.booksRepository.delete(objectId);
         if (!deleted) {
             throw new NotFoundError("Libro no encontrado");
         }
@@ -96,12 +110,26 @@ export class BooksService {
 
     private requireYear(value: unknown): number {
         if (typeof value !== "number" || !Number.isInteger(value)) {
-            throw new BadRequestError("El campo 'publicationYear' debe ser un número entero");
-        }
-        if (value < 0 || value > new Date().getFullYear()) {
-            throw new BadRequestError(`El campo 'publicationYear' debe estar entre 0 y ${new Date().getFullYear()}`);
+            throw new BadRequestError("El campo 'year' debe ser un número entero");
         }
         return value;
+    }
+
+    private async ensureUniqueIsbn(isbn: string, exceptId?: ObjectId): Promise<void> {
+        if (await this.booksRepository.isbnExists(isbn, exceptId)) {
+            throw new BadRequestError("El ISBN ya está registrado");
+        }
+    }
+
+    private rethrowDuplicateIsbn(error: unknown): void {
+        if (
+            typeof error === "object" &&
+            error !== null &&
+            "code" in error &&
+            error.code === 11000
+        ) {
+            throw new BadRequestError("El ISBN ya está registrado");
+        }
     }
 
     private toObjectId(id: string): ObjectId {

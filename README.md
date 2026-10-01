@@ -1,61 +1,79 @@
-# api_biblioteca
+# API de Biblioteca
 
-API REST construida con Node.js, Express, TypeScript y MongoDB.
-Arquitectura por capas (rutas → controlador → servicio → repositorio).
+API REST para gestionar autores, libros y préstamos con Node.js, Express, TypeScript y MongoDB. Cada módulo sigue la arquitectura por capas: rutas, controlador, servicio y repositorio.
 
-## Instalación
+## Requisitos
 
-```bash
+- Node.js y npm
+- Una instancia de MongoDB local o remota
+
+## Instalación y ejecución
+
+```powershell
 npm install
-cp .env.example .env   # ajusta MONGO_URI
+Copy-Item .env.example .env
 ```
 
-## Ejecución
+Configura `MONGO_URI` y `MONGO_DB_NAME` en `.env`. Luego ejecuta:
 
-```bash
-npm run dev            # desarrollo con recarga
-npm run build && npm start   # producción
+```powershell
+npm run dev
 ```
 
-## Endpoints del módulo autores
+Para compilar y ejecutar la versión de producción:
 
-Base URL: `http://localhost:3000/api/v1/authors`
+```powershell
+npm run build
+npm start
+```
 
-| Método | Ruta   | Descripción                  |
-| ------ | ------ | ---------------------------- |
-| POST   | /      | Crea un autor                |
-| GET    | /      | Lista todos los autores     |
-| GET    | /:id   | Obtiene un autor por id     |
-| PUT    | /:id   | Actualiza un autor          |
-| DELETE | /:id   | Elimina un autor            |
+La API usa `http://localhost:3000` por defecto. MongoDB crea un índice único para el ISBN al iniciar.
 
-## Endpoints del módulo books
+## Modelos y reglas
 
-Base URL: `http://localhost:3000/api/v1/books`
+- **Authors:** `name` y `nationality` son obligatorios; `birthYear` es opcional y debe ser un entero positivo. No se elimina un autor con libros asociados.
+- **Books:** `title`, `isbn` y `authorId` son obligatorios; `isbn` es único; `year` es opcional y entero. `available` se crea en `true` y solo cambia como parte de las operaciones de préstamo.
+- **Loans:** `bookId`, `userName` y `loanDate` son obligatorios. `returnDate` es opcional y `returned` se crea en `false`. Solo se puede prestar un libro disponible; al registrar su devolución vuelve a estar disponible.
 
-| Método | Ruta   | Descripción                  |
-| ------ | ------ | ---------------------------- |
-| POST   | /      | Crea un libro                |
-| GET    | /      | Lista todos los libros       |
-| GET    | /:id   | Obtiene un libro por id      |
-| PUT    | /:id   | Actualiza un libro           |
-| DELETE | /:id   | Elimina un libro             |
+Las fechas se envían en formato ISO 8601, por ejemplo `2026-10-01T12:00:00.000Z`. Los identificadores son ObjectId de MongoDB.
 
-Para crear un libro, envía `title`, `isbn`, `publicationYear`, `genre` y `authorId` (el ObjectId de un autor existente). `active` es opcional y por defecto es `true`.
+## Endpoints
 
-## Endpoints del módulo loans
+Todos los recursos usan el prefijo `http://localhost:3000/api/v1`.
 
-Base URL: `http://localhost:3000/api/v1/loans`
+| Método | Ruta | Descripción |
+| ------ | ---- | ----------- |
+| POST | `/authors` | Crear autor |
+| GET | `/authors` | Listar autores |
+| GET | `/authors/:id` | Consultar autor |
+| PUT | `/authors/:id` | Actualizar autor |
+| DELETE | `/authors/:id` | Eliminar autor si no tiene libros asociados |
+| POST | `/books` | Crear libro |
+| GET | `/books` | Listar libros |
+| GET | `/books/:id` | Consultar libro |
+| PUT | `/books/:id` | Actualizar libro |
+| DELETE | `/books/:id` | Eliminar libro disponible |
+| POST | `/loans` | Registrar préstamo de un libro disponible |
+| GET | `/loans` | Listar préstamos |
+| GET | `/loans/:id` | Consultar préstamo |
+| PUT | `/loans/:id` | Actualizar préstamo o devolver el libro |
+| DELETE | `/loans/:id` | Eliminar préstamo; un préstamo activo devuelve primero el libro |
+| GET | `/health` | Comprobar estado de la API |
 
-| Método | Ruta          | Descripción                        |
-| ------ | ------------- | ---------------------------------- |
-| POST   | /             | Crea un préstamo                   |
-| GET    | /             | Lista todos los préstamos          |
-| GET    | /:id          | Obtiene un préstamo por id         |
-| PUT    | /:id          | Actualiza un préstamo activo       |
-| POST   | /:id/return   | Registra la devolución del libro   |
-| DELETE | /:id          | Elimina un préstamo                |
+Las operaciones correctas responden con `201` al crear, `200` al consultar/actualizar y `204` al eliminar. Los errores de validación responden `400`, los recursos inexistentes `404` y los errores inesperados `500`.
 
-Para crear un préstamo, envía `bookId` (el ObjectId de un libro existente), `borrowerName` y `dueDate` en formato de fecha válido. La fecha del préstamo se asigna automáticamente.
+## Ejemplos con curl
 
-Health check: `GET /health`
+En estos ejemplos, sustituye `<authorId>`, `<bookId>` y `<loanId>` por los `_id` devueltos por las peticiones anteriores.
+
+```powershell
+curl.exe -X POST http://localhost:3000/api/v1/authors -H "Content-Type: application/json" -d '{"name":"Gabriel García Márquez","nationality":"Colombiana","birthYear":1927}'
+
+curl.exe -X POST http://localhost:3000/api/v1/books -H "Content-Type: application/json" -d '{"title":"Cien años de soledad","isbn":"9780307474728","authorId":"<authorId>","year":1967}'
+
+curl.exe -X POST http://localhost:3000/api/v1/loans -H "Content-Type: application/json" -d '{"bookId":"<bookId>","userName":"Ana Pérez","loanDate":"2026-10-01T12:00:00.000Z"}'
+
+curl.exe -X PUT http://localhost:3000/api/v1/loans/<loanId> -H "Content-Type: application/json" -d '{"returned":true}'
+```
+
+Para probar todos los endpoints en orden, usa [requests.http](requests.http) desde VS Code con la extensión REST Client.

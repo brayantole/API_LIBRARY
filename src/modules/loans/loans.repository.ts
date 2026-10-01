@@ -29,6 +29,25 @@ export class LoansRepository {
         return result ?? null;
     }
 
+    async markReturned(id: ObjectId, returnDate: Date): Promise<Loan | null> {
+        const result = await this.collection().findOneAndUpdate(
+            { _id: id, returned: false },
+            { $set: { returned: true, returnDate, updatedAt: returnDate } },
+            { returnDocument: "after" }
+        );
+        return result ?? null;
+    }
+
+    async restoreActive(id: ObjectId): Promise<void> {
+        await this.collection().updateOne(
+            { _id: id, returned: true },
+            {
+                $set: { returned: false, updatedAt: new Date() },
+                $unset: { returnDate: "" },
+            }
+        );
+    }
+
     async delete(id: ObjectId): Promise<boolean> {
         const result = await this.collection().deleteOne({ _id: id });
         return result.deletedCount === 1;

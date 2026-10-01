@@ -1,21 +1,24 @@
 import { ObjectId } from "mongodb";
 
-export type LoanStatus = "active" | "returned";
-
 export interface Loan {
     _id?: ObjectId;
     bookId: ObjectId;
-    borrowerName: string;
+    userName: string;
     loanDate: Date;
-    dueDate: Date;
-    returnedAt: Date | null;
-    status: LoanStatus;
+    returnDate?: Date;
+    returned: boolean;
     createdAt: Date;
     updatedAt: Date;
 }
 
 export interface LoanDTO {
     bookId?: string;
-    borrowerName?: string;
-    dueDate?: string;
+    userName?: string;
+    loanDate?: string;
+}
+
+export interface LoanUpdateDTO {
+    userName?: string;
+    loanDate?: string;
+    returned?: boolean;
 }

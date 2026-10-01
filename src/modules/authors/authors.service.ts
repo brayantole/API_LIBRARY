@@ -1,16 +1,19 @@
 import { ObjectId } from "mongodb";
 import { BadRequestError, NotFoundError } from "../../shared/errors/AppError";
+import { BooksRepository } from "../books/books.repository";
 import { Author, AuthorDTO } from "./authors.model";
 import { AuthorsRepository } from "./authors.repository";
 
 export class AuthorsService {
     private readonly authorsRepository = new AuthorsRepository();
+    private readonly booksRepository = new BooksRepository();
 
     async create(data: AuthorDTO): Promise<Author> {
         const name = this.requireString(data?.name, "name");
         const nationality = this.requireString(data?.nationality, "nationality");
-        const biography = this.requireString(data?.biography, "biography");
-        const birthYear = this.requireNumber(data?.birthYear, "birthYear");
+        const birthYear = data?.birthYear === undefined
+            ? undefined
+            : this.requirePositiveInteger(data.birthYear, "birthYear");
 
         const now = new Date();
 
@@ -18,8 +21,6 @@ export class AuthorsService {
             name,
             nationality,
             birthYear,
-            biography,
-            active: typeof data.active === "boolean" ? data.active : true,
             createdAt: now,
             updatedAt: now,
         });
@@ -45,17 +46,8 @@ export class AuthorsService {
         if (data.nationality !== undefined) {
             changes.nationality = this.requireString(data.nationality, "nationality");
         }
-        if (data.biography !== undefined) {
-            changes.biography = this.requireString(data.biography, "biography");
-        }
         if (data.birthYear !== undefined) {
-            changes.birthYear = this.requireNumber(data.birthYear, "birthYear");
-        }
-        if (data.active !== undefined) {
-            if (typeof data.active !== "boolean") {
-                throw new BadRequestError("El campo 'active' debe ser booleano");
-            }
-            changes.active = data.active;
+            changes.birthYear = this.requirePositiveInteger(data.birthYear, "birthYear");
         }
 
         if (Object.keys(changes).length === 0) {
@@ -73,7 +65,11 @@ export class AuthorsService {
     }
 
     async delete(id: string): Promise<void> {
-        const deleted = await this.authorsRepository.delete(this.toObjectId(id));
+        const objectId = this.toObjectId(id);
+        if (await this.booksRepository.existsByAuthorId(objectId)) {
+            throw new BadRequestError("No se puede eliminar un autor que tiene libros asociados");
+        }
+        const deleted = await this.authorsRepository.delete(objectId);
         if (!deleted) {
             throw new NotFoundError("Autor no encontrado");
         }
@@ -86,12 +82,9 @@ export class AuthorsService {
         return value.trim();
     }
 
-    private requireNumber(value: unknown, field: string): number {
-        if (typeof value !== "number" || !Number.isInteger(value)) {
-            throw new BadRequestError(`El campo '${field}' debe ser un número entero`);
-        }
-        if (value < 0 || value > new Date().getFullYear()) {
-            throw new BadRequestError(`El campo '${field}' debe estar entre 0 y ${new Date().getFullYear()}`);
+    private requirePositiveInteger(value: unknown, field: string): number {
+        if (typeof value !== "number" || !Number.isInteger(value) || value <= 0) {
+            throw new BadRequestError(`El campo '${field}' debe ser un número entero positivo`);
         }
         return value;
     }

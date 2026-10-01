@@ -20,6 +20,30 @@ export class BooksRepository {
         return this.collection().findOne({ _id: id });
     }
 
+    async isbnExists(isbn: string, exceptId?: ObjectId): Promise<boolean> {
+        const filter = exceptId ? { isbn, _id: { $ne: exceptId } } : { isbn };
+        return (await this.collection().findOne(filter, { projection: { _id: 1 } })) !== null;
+    }
+
+    async existsByAuthorId(authorId: ObjectId): Promise<boolean> {
+        return (await this.collection().findOne(
+            { authorId },
+            { projection: { _id: 1 } }
+        )) !== null;
+    }
+
+    async setAvailability(
+        id: ObjectId,
+        available: boolean,
+        expectedAvailability: boolean
+    ): Promise<boolean> {
+        const result = await this.collection().updateOne(
+            { _id: id, available: expectedAvailability },
+            { $set: { available, updatedAt: new Date() } }
+        );
+        return result.modifiedCount === 1;
+    }
+
     async update(id: ObjectId, changes: Partial<Book>): Promise<Book | null> {
         const result = await this.collection().findOneAndUpdate(
             { _id: id },
