@@ -1,7 +1,7 @@
 import { ObjectId } from "mongodb";
 import { BadRequestError, NotFoundError } from "../../shared/errors/AppError";
 import { AuthorsRepository } from "../authors/authors.repository";
-import { Book, BookDTO } from "./books.model";
+import { Book, BookDTO, BookWithAuthor } from "./books.model";
 import { BooksRepository } from "./books.repository";
 
 export class BooksService {
@@ -32,12 +32,12 @@ export class BooksService {
         }
     }
 
-    async findAll(): Promise<Book[]> {
-        return this.booksRepository.findAll();
+    async findAll(): Promise<BookWithAuthor[]> {
+        return this.booksRepository.findAllWithAuthor();
     }
 
-    async findById(id: string): Promise<Book> {
-        const book = await this.booksRepository.findById(this.toObjectId(id));
+    async findById(id: string): Promise<BookWithAuthor> {
+        const book = await this.booksRepository.findByIdWithAuthor(this.toObjectId(id));
         if (!book) {
             throw new NotFoundError("Libro no encontrado");
         }

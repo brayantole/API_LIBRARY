@@ -12,10 +12,6 @@ export class BooksRepository {
         return { _id: result.insertedId, ...data };
     }
 
-    async findAll(): Promise<Book[]> {
-        return this.collection().find().sort({ createdAt: -1 }).toArray();
-    }
-
     private authorLookupStages(): object[] {
         return [
             {
