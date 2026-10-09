@@ -1,6 +1,6 @@
 import { Collection, ObjectId } from "mongodb";
 import { getDb } from "../../config/database";
-import { Book, BookWithAuthor } from "./books.model";
+import { Book, BookWithAuthorAndGenre } from "./books.model";
 
 export class BooksRepository {
     private collection(): Collection<Book> {
@@ -12,7 +12,7 @@ export class BooksRepository {
         return { _id: result.insertedId, ...data };
     }
 
-    private authorLookupStages(): object[] {
+    private relationLookupStages(): object[] {
         return [
             {
                 $lookup: {
@@ -29,25 +29,42 @@ export class BooksRepository {
                 },
             },
             {
+                $lookup: {
+                    from: "genres",
+                    localField: "genreId",
+                    foreignField: "_id",
+                    as: "genre",
+                },
+            },
+            {
+                $unwind: {
+                    path: "$genre",
+                    preserveNullAndEmptyArrays: true,
+                },
+            },
+            {
                 $project: { authorId: 0 },
+            },
+            {
+                $project: { genreId: 0 },
             },
         ];
     }
 
-    async findAllWithAuthor(): Promise<BookWithAuthor[]> {
+    async findAllWithAuthor(): Promise<BookWithAuthorAndGenre[]> {
         return this.collection()
-            .aggregate<BookWithAuthor>([
-                ...this.authorLookupStages(),
+            .aggregate<BookWithAuthorAndGenre>([
+                ...this.relationLookupStages(),
                 { $sort: { createdAt: -1 } },
             ])
             .toArray();
     }
 
-    async findByIdWithAuthor(id: ObjectId): Promise<BookWithAuthor | null> {
+    async findByIdWithAuthor(id: ObjectId): Promise<BookWithAuthorAndGenre | null> {
         const result = await this.collection()
-            .aggregate<BookWithAuthor>([
+            .aggregate<BookWithAuthorAndGenre>([
                 { $match: { _id: id } },
-                ...this.authorLookupStages(),
+                ...this.relationLookupStages(),
             ])
             .toArray();
         return result[0] ?? null;
@@ -65,6 +82,13 @@ export class BooksRepository {
     async existsByAuthorId(authorId: ObjectId): Promise<boolean> {
         return (await this.collection().findOne(
             { authorId },
+            { projection: { _id: 1 } }
+        )) !== null;
+    }
+
+    async existsByGenreId(genreId: ObjectId): Promise<boolean> {
+        return (await this.collection().findOne(
+            { genreId },
             { projection: { _id: 1 } }
         )) !== null;
     }
