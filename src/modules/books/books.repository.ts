@@ -1,6 +1,6 @@
 import { Collection, ObjectId } from "mongodb";
 import { getDb } from "../../config/database";
-import { Book, BookWithAuthorAndGenre } from "./books.model";
+import { Book, BookWithAuthorAndGenres } from "./books.model";
 
 export class BooksRepository {
     private collection(): Collection<Book> {
@@ -31,38 +31,26 @@ export class BooksRepository {
             {
                 $lookup: {
                     from: "genres",
-                    localField: "genreId",
+                    localField: "genreIds",
                     foreignField: "_id",
-                    as: "genre",
+                    as: "genres",
                 },
-            },
-            {
-                $unwind: {
-                    path: "$genre",
-                    preserveNullAndEmptyArrays: true,
-                },
-            },
-            {
-                $project: { authorId: 0 },
-            },
-            {
-                $project: { genreId: 0 },
             },
         ];
     }
 
-    async findAllWithAuthor(): Promise<BookWithAuthorAndGenre[]> {
+    async findAllWithAuthor(): Promise<BookWithAuthorAndGenres[]> {
         return this.collection()
-            .aggregate<BookWithAuthorAndGenre>([
+            .aggregate<BookWithAuthorAndGenres>([
                 ...this.relationLookupStages(),
                 { $sort: { createdAt: -1 } },
             ])
             .toArray();
     }
 
-    async findByIdWithAuthor(id: ObjectId): Promise<BookWithAuthorAndGenre | null> {
+    async findByIdWithAuthor(id: ObjectId): Promise<BookWithAuthorAndGenres | null> {
         const result = await this.collection()
-            .aggregate<BookWithAuthorAndGenre>([
+            .aggregate<BookWithAuthorAndGenres>([
                 { $match: { _id: id } },
                 ...this.relationLookupStages(),
             ])
@@ -88,7 +76,7 @@ export class BooksRepository {
 
     async existsByGenreId(genreId: ObjectId): Promise<boolean> {
         return (await this.collection().findOne(
-            { genreId },
+            { genreIds: genreId },
             { projection: { _id: 1 } }
         )) !== null;
     }

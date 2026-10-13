@@ -7,7 +7,7 @@ export interface Book {
     title: string;
     isbn: string;
     authorId: ObjectId;
-    genreId: ObjectId;
+    genreIds: ObjectId[];
     year?: number;
     available: boolean;
     createdAt: Date;
@@ -18,11 +18,11 @@ export interface BookDTO {
     title?: string;
     isbn?: string;
     authorId?: string;
-    genreId?: string;
+    genreIds?: string[];
     year?: number;
 }
 
-export interface BookWithAuthorAndGenre extends Omit<Book, "authorId" | "genreId"> {
+export interface BookWithAuthorAndGenres extends Book {
     author: Author | null;
-    genre: Genres | null;
+    genres: Genres[];
 }

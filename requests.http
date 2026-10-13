@@ -1,5 +1,6 @@
 @baseUrl = http://localhost:3000/api/v1
 @authorId = {{createAuthor.response.body._id}}
+@genreId = {{createGenre.response.body._id}}
 @bookId = {{createBook.response.body._id}}
 @loanId = {{createLoan.response.body._id}}
 
@@ -16,6 +17,16 @@ Content-Type: application/json
 
 ### Listar autores
 GET {{baseUrl}}/authors
+
+### Crear género
+# @name createGenre
+POST {{baseUrl}}/genres
+Content-Type: application/json
+
+{
+  "name": "Realismo mágico",
+  "description": "Narrativa que combina elementos reales y fantásticos"
+}
 
 ### Consultar autor
 GET {{baseUrl}}/authors/{{authorId}}
@@ -37,6 +48,7 @@ Content-Type: application/json
   "title": "Cien años de soledad",
   "isbn": "9780307474728",
   "authorId": "{{authorId}}",
+  "genreIds": ["{{genreId}}"],
   "year": 1967
 }
 
