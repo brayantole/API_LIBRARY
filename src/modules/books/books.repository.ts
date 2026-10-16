@@ -36,6 +36,14 @@ export class BooksRepository {
                     as: "genres",
                 },
             },
+            {
+                $project: {
+                    authorId: 0,
+                    genreIds: 0,
+                    "author._id": 0,
+                    "genres._id": 0,
+                },
+            },
         ];
     }
 
